@@ -1,0 +1,28 @@
+{
+  // Shared defaults for all environments.
+  "defaults": {
+    "fetchMaxRows": 500,
+    "connectTimeout": 15
+  },
+
+  "environments": {
+    "DEV1": {
+      "mode": "tns",
+      "tnsnamesPath": "C:\\oracle\\network\\admin\\tnsnames.ora",
+      "dsnAlias": "DEV1",
+      "username": "readonly_user",
+      "password": "plain_text_password",
+      "defaultSchema": "APP"
+    },
+
+    "UAT3": {
+      "mode": "direct",
+      "host": "uat3-db.internal",
+      "port": 1521,
+      "serviceName": "UAT3",
+      "username": "readonly_user",
+      "password": "plain_text_password",
+      "defaultSchema": "APP"
+    }
+  }
+}
