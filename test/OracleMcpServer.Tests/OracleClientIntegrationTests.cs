@@ -6,6 +6,7 @@ using Xunit;
 
 namespace OracleMcpServer.Tests;
 
+[Collection("OracleClientIntegration")]
 public sealed class OracleClientIntegrationTests : IDisposable
 {
     private readonly string _tempDir;
@@ -62,7 +63,7 @@ public sealed class OracleClientIntegrationTests : IDisposable
         return OracleClient.GetClient(loader, "LOCAL");
     }
 
-    [Fact(Skip = "Integration test requires a running Oracle database")]
+    [Fact, Trait("Category", "Integration")]
     public void CheckDatabase_ReturnsAvailable()
     {
         var result = GetClient().CheckDatabase();
@@ -70,7 +71,7 @@ public sealed class OracleClientIntegrationTests : IDisposable
         Assert.Equal("direct", (string)result["mode"]!);
     }
 
-    [Fact(Skip = "Integration test requires a running Oracle database")]
+    [Fact, Trait("Category", "Integration")]
     public void RunQuery_SimpleSelect_ReturnsRows()
     {
         var result = GetClient().RunQuery("SELECT 1 AS val FROM dual");
@@ -78,7 +79,7 @@ public sealed class OracleClientIntegrationTests : IDisposable
         Assert.Contains("VAL", result.Columns);
     }
 
-    [Fact(Skip = "Integration test requires a running Oracle database")]
+    [Fact, Trait("Category", "Integration")]
     public void RunQuery_WithLimit_Truncated()
     {
         var result = GetClient().RunQuery("SELECT * FROM all_objects");
@@ -86,14 +87,14 @@ public sealed class OracleClientIntegrationTests : IDisposable
         Assert.Equal(100, result.RowCount);
     }
 
-    [Fact(Skip = "Integration test requires a running Oracle database")]
+    [Fact, Trait("Category", "Integration")]
     public void ListTables_ReturnsTables()
     {
         var result = GetClient().ListTables("SYS", null);
         Assert.NotEmpty(result);
     }
 
-    [Fact(Skip = "Integration test requires a running Oracle database")]
+    [Fact, Trait("Category", "Integration")]
     public void ListViews_ReturnsViews()
     {
         var result = GetClient().ListTables("SYS", null, includeViews: true);
@@ -101,14 +102,14 @@ public sealed class OracleClientIntegrationTests : IDisposable
         Assert.NotEmpty(views);
     }
 
-    [Fact(Skip = "Integration test requires a running Oracle database")]
+    [Fact, Trait("Category", "Integration")]
     public void ListSchemas_ContainsApp()
     {
         var result = GetClient().ListSchemas();
         Assert.Contains("APP", result);
     }
 
-    [Fact(Skip = "Integration test requires a running Oracle database")]
+    [Fact, Trait("Category", "Integration")]
     public void DescribeTable_SystemTable_ReturnsColumns()
     {
         var result = GetClient().DescribeTable("SYS", "ALL_TABLES");
@@ -116,7 +117,7 @@ public sealed class OracleClientIntegrationTests : IDisposable
         Assert.Contains(result, c => (string)c["columnName"]! == "TABLE_NAME");
     }
 
-    [Fact(Skip = "Integration test requires a running Oracle database")]
+    [Fact, Trait("Category", "Integration")]
     public void ListColumns_ReturnsColumns()
     {
         var result = GetClient().ListColumns("SYS", "ALL_TABLES");
@@ -124,21 +125,21 @@ public sealed class OracleClientIntegrationTests : IDisposable
         Assert.Contains(result, c => (string)c["columnName"]! == "TABLE_NAME");
     }
 
-    [Fact(Skip = "Integration test requires a running Oracle database")]
+    [Fact, Trait("Category", "Integration")]
     public void GetPrimaryKey_OnDual_ReturnsEmpty()
     {
         var result = GetClient().GetPrimaryKey("SYS", "DUAL");
         Assert.Empty(result);
     }
 
-    [Fact(Skip = "Integration test requires a running Oracle database")]
+    [Fact, Trait("Category", "Integration")]
     public void SearchObjects_FindsTables()
     {
         var result = GetClient().SearchObjects("ALL_%", "SYS", ["TABLE", "VIEW"]);
         Assert.NotEmpty(result);
     }
 
-    [Fact(Skip = "Integration test requires a running Oracle database")]
+    [Fact, Trait("Category", "Integration")]
     public void PreviewQuery_Validates()
     {
         var result = OracleTools.PreviewQuery("SELECT 1 FROM dual");

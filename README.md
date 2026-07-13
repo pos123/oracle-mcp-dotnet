@@ -324,20 +324,23 @@ The test suite covers:
 - **ConfigLoader** (6 tests): valid config parsing, JSONC comment stripping, missing file, invalid mode, empty environments, unknown environment rejection
 - **SqlGuard** (20 tests): allowed SELECT/WITH, empty SQL, blocked INSERT/UPDATE/DELETE/DROP/CREATE/ALTER/MERGE/TRUNCATE, multi-statement rejection, `SELECT FOR UPDATE` blocking, keyword-in-string-literal allowance, keyword-in-comment allowance, case-insensitive block, comment stripping, whitespace normalization
 
-### Integration Tests (11 tests, skipped by default)
+### Integration Tests (11 tests)
 
-Tests that exercise `OracleClient` against a real database. All are gated behind `[Fact(Skip=...)]` and are skipped in normal `dotnet test` runs.
+Tests that exercise `OracleClient` against a real database. Gated behind `[Trait("Category", "Integration")]` — excluded from `dotnet test` unless you filter for them.
 
 To run them, start a local Oracle XE container:
 
 ```bash
 docker run -d --name oracle-xe -p 1521:1521 -e ORACLE_PASSWORD=oracle gvenzl/oracle-xe
+# Create the APP user (not created by default):
+docker exec oracle-xe bash -c "echo -e 'CREATE USER APP IDENTIFIED BY oracle;\nGRANT CONNECT, SELECT ANY TABLE, SELECT ANY DICTIONARY TO APP;' | sqlplus -s system/oracle@localhost:1521/XEPDB1"
 ```
 
-Then run the tests (remove the `Skip` attribute or use an explicit filter):
+Then run:
 
 ```bash
-dotnet test --filter "OracleClientIntegration"
+dotnet test --filter "Category=Integration"   # integration only
+dotnet test --filter "Category!=Integration"  # unit tests only
 ```
 
 The tests connect to `localhost:1521/XEPDB1` as `APP`/`oracle` and cover:

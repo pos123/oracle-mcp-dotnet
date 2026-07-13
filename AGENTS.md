@@ -7,7 +7,8 @@ dotnet build                    # restore + build (Debug)
 dotnet test                     # run all tests (xUnit, no DB needed)
 dotnet test -v n                # verbose test output
 dotnet test --filter "SqlGuard" # run a single test class
-dotnet test --filter "OracleClientIntegration" # integration tests (skipped by default)
+dotnet test --filter "Category=Integration" # integration tests (requires Oracle DB)
+dotnet test --filter "Category!=Integration" # unit tests only
 dotnet build -c Release         # release build
 ```
 
