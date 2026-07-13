@@ -46,7 +46,6 @@ public sealed partial class OracleClient
         else
         {
             builder["Data Source"] = $"(DESCRIPTION=(ADDRESS=(PROTOCOL={_config.Protocol})(HOST={_config.Host})(PORT={_config.Port}))(CONNECT_DATA=(SERVICE_NAME={_config.ServiceName})))";
-            builder["Tcp Connect Timeout"] = _config.ConnectTimeout;
         }
 
         return builder.ConnectionString;

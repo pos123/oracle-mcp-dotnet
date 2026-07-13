@@ -67,7 +67,7 @@ public sealed class OracleClientIntegrationTests : IDisposable
     {
         var result = GetClient().CheckDatabase();
         Assert.True((bool)result["available"]!);
-        Assert.Equal("local", (string)result["mode"]!);
+        Assert.Equal("direct", (string)result["mode"]!);
     }
 
     [Fact(Skip = "Integration test requires a running Oracle database")]
@@ -89,14 +89,14 @@ public sealed class OracleClientIntegrationTests : IDisposable
     [Fact(Skip = "Integration test requires a running Oracle database")]
     public void ListTables_ReturnsTables()
     {
-        var result = GetClient().ListTables(null, null);
+        var result = GetClient().ListTables("SYS", null);
         Assert.NotEmpty(result);
     }
 
     [Fact(Skip = "Integration test requires a running Oracle database")]
     public void ListViews_ReturnsViews()
     {
-        var result = GetClient().ListTables(null, null, includeViews: true);
+        var result = GetClient().ListTables("SYS", null, includeViews: true);
         var views = result.Where(r => r["type"] == "VIEW").ToList();
         Assert.NotEmpty(views);
     }
@@ -111,7 +111,7 @@ public sealed class OracleClientIntegrationTests : IDisposable
     [Fact(Skip = "Integration test requires a running Oracle database")]
     public void DescribeTable_SystemTable_ReturnsColumns()
     {
-        var result = GetClient().DescribeTable(null, "ALL_TABLES");
+        var result = GetClient().DescribeTable("SYS", "ALL_TABLES");
         Assert.NotEmpty(result);
         Assert.Contains(result, c => (string)c["columnName"]! == "TABLE_NAME");
     }
@@ -119,7 +119,7 @@ public sealed class OracleClientIntegrationTests : IDisposable
     [Fact(Skip = "Integration test requires a running Oracle database")]
     public void ListColumns_ReturnsColumns()
     {
-        var result = GetClient().ListColumns(null, "ALL_TABLES");
+        var result = GetClient().ListColumns("SYS", "ALL_TABLES");
         Assert.NotEmpty(result);
         Assert.Contains(result, c => (string)c["columnName"]! == "TABLE_NAME");
     }
@@ -127,14 +127,14 @@ public sealed class OracleClientIntegrationTests : IDisposable
     [Fact(Skip = "Integration test requires a running Oracle database")]
     public void GetPrimaryKey_OnDual_ReturnsEmpty()
     {
-        var result = GetClient().GetPrimaryKey(null, "DUAL");
+        var result = GetClient().GetPrimaryKey("SYS", "DUAL");
         Assert.Empty(result);
     }
 
     [Fact(Skip = "Integration test requires a running Oracle database")]
     public void SearchObjects_FindsTables()
     {
-        var result = GetClient().SearchObjects("ALL_%", null, ["TABLE", "VIEW"]);
+        var result = GetClient().SearchObjects("ALL_%", "SYS", ["TABLE", "VIEW"]);
         Assert.NotEmpty(result);
     }
 
