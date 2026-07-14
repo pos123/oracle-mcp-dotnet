@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Serilog;
 
 namespace OracleMcpServer.Guards;
 
@@ -9,6 +10,8 @@ public sealed class SqlGuardError : Exception
 
 public static partial class SqlGuard
 {
+    private static readonly ILogger _logger = Log.ForContext(typeof(SqlGuard));
+
     private static readonly Regex WhitespaceRegex = MyRegex();
     private static readonly Regex ForbiddenTokenRegex = ForbiddenRegex();
 
@@ -153,13 +156,22 @@ public static partial class SqlGuard
             throw new SqlGuardError("SQL cannot be empty");
 
         if (masked.Contains(';'))
+        {
+            _logger.Warning("SQL rejected: multi-statement not allowed. SqlPreview={SqlPreview}", sql[..Math.Min(sql.Length, 100)]);
             throw new SqlGuardError("Only a single SQL statement is allowed");
+        }
 
         if (!Regex.IsMatch(maskedNormalized, @"^(SELECT|WITH)\b", RegexOptions.IgnoreCase))
+        {
+            _logger.Warning("SQL rejected: non-SELECT statement. SqlPreview={SqlPreview}", sql[..Math.Min(sql.Length, 100)]);
             throw new SqlGuardError("Only SELECT statements are allowed");
+        }
 
         if (ForbiddenTokenRegex.IsMatch(maskedNormalized))
+        {
+            _logger.Warning("SQL rejected: forbidden keyword found. SqlPreview={SqlPreview}", sql[..Math.Min(sql.Length, 100)]);
             throw new SqlGuardError("SQL contains a forbidden keyword for read-only mode");
+        }
 
         return normalized;
     }

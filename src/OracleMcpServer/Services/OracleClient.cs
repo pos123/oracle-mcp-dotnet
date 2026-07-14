@@ -4,12 +4,14 @@ using System.Text.RegularExpressions;
 using Oracle.ManagedDataAccess.Client;
 using OracleMcpServer.Config;
 using OracleMcpServer.Models;
+using Serilog;
 
 namespace OracleMcpServer.Services;
 
 public sealed partial class OracleClient
 {
     private static readonly ConcurrentDictionary<string, OracleClient> _instances = new();
+    private static readonly ILogger _logger = Log.ForContext(typeof(OracleClient));
 
     private readonly OracleConfig _config;
 
@@ -21,7 +23,11 @@ public sealed partial class OracleClient
     public static OracleClient GetClient(ConfigLoader loader, string environment)
     {
         var config = loader.ResolveEnvironment(environment);
-        return _instances.GetOrAdd(config.Name, _ => new OracleClient(config));
+        return _instances.GetOrAdd(config.Name, _ =>
+        {
+            _logger.Debug("OracleClient cache miss: creating new client for Environment={Environment}", config.Name);
+            return new OracleClient(config);
+        });
     }
 
     public static void ResetCache()
@@ -66,18 +72,24 @@ public sealed partial class OracleClient
         return $"\"{identifier.ToUpperInvariant()}\"";
     }
 
-    private OracleConnection CreateConnection()
+    private OracleConnection CreateReadonlyConnection()
     {
-        return new OracleConnection(BuildConnectionString());
+        var conn = new OracleConnection(BuildConnectionString());
+        conn.Open();
+        
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SET TRANSACTION READ ONLY";
+        cmd.ExecuteNonQuery();
+        return conn;
     }
+
 
     public Dictionary<string, object?> CheckDatabase()
     {
         var sw = Stopwatch.StartNew();
         try
         {
-            using var conn = CreateConnection();
-            conn.Open();
+            using var conn = CreateReadonlyConnection();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT 1 FROM dual";
             cmd.ExecuteScalar();
@@ -94,6 +106,8 @@ public sealed partial class OracleClient
         catch (Exception ex)
         {
             sw.Stop();
+            _logger.Error(ex, "CheckDatabase failed: Environment={Environment}, DurationMs={DurationMs}",
+                _config.Name, Math.Round(sw.Elapsed.TotalMilliseconds, 2));
             return new Dictionary<string, object?>
             {
                 ["environment"] = _config.Name,
@@ -107,11 +121,11 @@ public sealed partial class OracleClient
 
     public QueryResult RunQuery(string sql)
     {
+        var sw = Stopwatch.StartNew();
         var maxRows = _config.FetchMaxRows;
         var limitedSql = $"SELECT * FROM ({sql}) WHERE ROWNUM <= {maxRows + 1}";
 
-        using var conn = CreateConnection();
-        conn.Open();
+        using var conn = CreateReadonlyConnection();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = limitedSql;
 
@@ -139,6 +153,10 @@ public sealed partial class OracleClient
         var truncated = rows.Count > maxRows;
         if (truncated)
             rows = rows.Take(maxRows).ToList();
+
+        sw.Stop();
+        _logger.Debug("RunQuery: Environment={Environment}, RowCount={RowCount}, Truncated={Truncated}, DurationMs={DurationMs}",
+            _config.Name, rows.Count, truncated, Math.Round(sw.Elapsed.TotalMilliseconds, 2));
 
         return new QueryResult
         {
@@ -170,8 +188,7 @@ public sealed partial class OracleClient
 
         var sql = $"SELECT OWNER, OBJECT_NAME, OBJECT_TYPE FROM ALL_OBJECTS WHERE {string.Join(" AND ", filters)} ORDER BY OWNER, OBJECT_NAME";
 
-        using var conn = CreateConnection();
-        conn.Open();
+        using var conn = CreateReadonlyConnection();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
         foreach (var (key, value) in parameters)
@@ -215,8 +232,7 @@ public sealed partial class OracleClient
             ORDER BY COLUMN_ID
             """;
 
-        using var conn = CreateConnection();
-        conn.Open();
+        using var conn = CreateReadonlyConnection();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
         cmd.Parameters.Add(new OracleParameter("owner", owner));
@@ -250,8 +266,7 @@ public sealed partial class OracleClient
             ORDER BY acc.POSITION
             """;
 
-        using var conn = CreateConnection();
-        conn.Open();
+        using var conn = CreateReadonlyConnection();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
         cmd.Parameters.Add(new OracleParameter("owner", owner));
@@ -290,8 +305,7 @@ public sealed partial class OracleClient
             ORDER BY fk.CONSTRAINT_NAME, fkcols.POSITION
             """;
 
-        using var conn = CreateConnection();
-        conn.Open();
+        using var conn = CreateReadonlyConnection();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
         cmd.Parameters.Add(new OracleParameter("owner", owner));
@@ -327,7 +341,7 @@ public sealed partial class OracleClient
             ORDER BY c.COLUMN_ID
             """;
 
-        using var conn = CreateConnection();
+        using var conn = CreateReadonlyConnection();
         conn.Open();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
@@ -363,8 +377,7 @@ public sealed partial class OracleClient
 
     public List<string> ListSchemas()
     {
-        using var conn = CreateConnection();
-        conn.Open();
+        using var conn = CreateReadonlyConnection();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT USERNAME FROM ALL_USERS ORDER BY USERNAME";
 

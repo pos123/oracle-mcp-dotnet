@@ -1,15 +1,24 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 using OracleMcpServer.Config;
+using Serilog;
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("OracleMcpServer", Serilog.Events.LogEventLevel.Debug)
+    .WriteTo.Console(standardErrorFromLevel: Serilog.Events.LogEventLevel.Verbose)
+    .WriteTo.File(
+        Path.Combine(AppContext.BaseDirectory, "logs", "oracle-mcp-.log"),
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 5,
+        fileSizeLimitBytes: 10L * 1024 * 1024,
+        rollOnFileSizeLimit: true)
+    .CreateLogger();
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Logging.AddConsole(consoleLogOptions =>
-{
-    consoleLogOptions.LogToStandardErrorThreshold = LogLevel.Trace;
-});
+builder.Services.AddSerilog(Log.Logger);
 
 builder.Services.AddSingleton<ConfigLoader>();
 
@@ -25,8 +34,7 @@ try
     var loader = host.Services.GetRequiredService<ConfigLoader>();
     loader.Load();
 
-    var logger = host.Services.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation("Starting Oracle read-only MCP server");
+    Log.Information("Starting Oracle read-only MCP server");
 
     await host.RunAsync();
 }

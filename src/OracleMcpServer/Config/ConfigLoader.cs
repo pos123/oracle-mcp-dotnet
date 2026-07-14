@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using OracleMcpServer.Models;
+using Serilog;
 
 namespace OracleMcpServer.Config;
 
@@ -14,6 +15,8 @@ public sealed class ConfigLoader
 {
     private const string DefaultConfigPath = "appsettings.jsonc";
     private const string EnvVarName = "ORACLE_MCP_CONFIG_PATH";
+
+    private static readonly ILogger _logger = Log.ForContext(typeof(ConfigLoader));
 
     private OracleConfigRegistry? _registry;
 
@@ -260,6 +263,8 @@ public sealed class ConfigLoader
             loaded[envName] = BuildEnvironmentConfig(envName, rawConfig, defaultFetchMaxRows, defaultConnectTimeout, "tcp");
         }
 
+        _logger.Information("Config loaded: Path={ConfigPath}, EnvironmentCount={Count}", configPath, loaded.Count);
+
         _registry = new OracleConfigRegistry
         {
             ConfigPath = configPath,
@@ -280,6 +285,7 @@ public sealed class ConfigLoader
             return config;
 
         var available = string.Join(", ", registry.Environments.Keys.OrderBy(k => k));
+        _logger.Warning("Unknown environment requested: Environment={Environment}, Available={Available}", environment, available);
         throw new ConfigError($"Unknown environment '{environment}'. Available environments: {available}");
     }
 }
