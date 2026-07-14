@@ -342,7 +342,6 @@ public sealed partial class OracleClient
             """;
 
         using var conn = CreateReadonlyConnection();
-        conn.Open();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
         cmd.Parameters.Add(new OracleParameter("owner", owner));
